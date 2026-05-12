@@ -203,6 +203,17 @@ def _regex_keywords(text: str, top_k: int) -> List[str]:
         "ii", "iii", "iv",
     }
 
+    # Job seniority / role title words — phrases made entirely of these
+    # are job titles (e.g. "Senior Backend Engineer"), not resume keywords
+    _TITLE_WORDS = {
+        "senior", "junior", "lead", "staff", "principal", "associate",
+        "engineer", "developer", "manager", "director", "analyst",
+        "scientist", "architect", "consultant", "specialist", "coordinator",
+        "officer", "head", "vp", "president", "intern", "contractor",
+        "backend", "frontend", "fullstack", "full", "stack", "software",
+        "platform", "infrastructure", "site", "reliability", "data",
+    }
+
     # Explicit tech/skill keyword patterns — always include if present
     tech_pattern = re.compile(
         r"\b(?:Python|Java|JavaScript|TypeScript|SQL|NoSQL|R\b|Scala|Go|"
@@ -233,6 +244,8 @@ def _regex_keywords(text: str, top_k: int) -> List[str]:
         if p.lower() not in _STOP_WORDS
         and not any(w.lower() in _STOP_WORDS for w in p.split())
         and len(p) > 4
+        # Skip phrases made entirely of job-title words (e.g. "Senior Backend Engineer")
+        and not all(w.lower() in _TITLE_WORDS for w in p.split())
     ]
 
     all_kw = [t.strip() for t in tech_matches] + phrase_cleaned
