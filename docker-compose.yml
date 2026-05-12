@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+
+  # ── FastAPI REST backend ───────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: job-agent-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./output:/app/output
+      - ./chroma_db:/app/chroma_db
+      - huggingface_cache:/root/.cache/huggingface   # shared model cache
+    env_file:
+      - .env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Streamlit UI ──────────────────────────────────────────────────────────
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: job-agent-ui
+    command: >
+      streamlit run streamlit_app.py
+      --server.port=8501
+      --server.address=0.0.0.0
+      --server.headless=true
+      --browser.gatherUsageStats=false
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./output:/app/output
+      - ./chroma_db:/app/chroma_db
+      - huggingface_cache:/root/.cache/huggingface   # shared model cache
+    env_file:
+      - .env
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  # Named volume shared between api + streamlit so the 80 MB
+  # sentence-transformers model is only stored once on the host.
+  huggingface_cache:

@@ -1,0 +1,33 @@
+Senior Data Scientist — Acme Analytics
+
+About the Role
+We are looking for a Senior Data Scientist to join our growing ML platform team.
+You will build, train, and deploy machine learning models that power our core product.
+
+Required Skills
+- 5+ years of Python experience
+- SQL and BigQuery for data analysis and pipeline work
+- Machine Learning frameworks: TensorFlow or PyTorch
+- Experience deploying models on AWS (S3, EC2, SageMaker)
+- A/B Testing and statistical experimentation
+- MLOps: model versioning, monitoring, and retraining pipelines
+
+Preferred Skills
+- Docker and Kubernetes for containerized deployments
+- Apache Spark or Airflow for large-scale ETL pipelines
+- Tableau or Looker for stakeholder dashboards
+- Experience with LLMs and RAG systems
+
+Responsibilities
+- Build and deploy ML models to production serving millions of users
+- Design scalable data pipelines processing terabytes of data daily
+- Collaborate with engineering and product teams on model integration
+- Mentor junior data scientists and conduct code reviews
+- Present findings to non-technical stakeholders
+
+Our Culture
+Fast-paced, data-driven, collaborative, high ownership. We move quickly and
+expect candidates to take initiative and drive outcomes end-to-end.
+
+Compensation: $160,000 – $200,000 + equity
+Location: Remote-first (US only)
