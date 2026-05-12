@@ -2,6 +2,7 @@
 
 > **Multi-agent pipeline that tailors your resume to a job description, scores it against ATS criteria, self-critiques the output, and generates a personalised cover letter — powered by NVIDIA NIM (free tier).**
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://resume-agent-xqvdwdsnfnwfoq7wxhf8nt.streamlit.app/)
 ![Tests](https://img.shields.io/badge/tests-133%20passed-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
