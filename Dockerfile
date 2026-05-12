@@ -2,12 +2,13 @@ FROM python:3.11-slim
 
 # ── System dependencies ────────────────────────────────────────────────────────
 # build-essential: needed by chromadb and sentence-transformers
-# libgl1-mesa-glx, libglib2.0-0: required by PyMuPDF
+# libgl1: required by PyMuPDF (replaces libgl1-mesa-glx, renamed in Debian Trixie)
+# libglib2.0-0: required by PyMuPDF
 # curl: used by HEALTHCHECK
 # git: required by sentence-transformers to fetch model metadata
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     curl \
     git \
