@@ -572,21 +572,26 @@ if st.session_state.get("pipeline_future") is not None:
             st.session_state.job_session = session
         st.rerun()
     else:
+        # Model-aware time estimate
+        _running_model = st.session_state.get("_model", model_choice)
+        _is_70b = "70b" in _running_model.lower() or "nemotron" in _running_model.lower()
+        _total_est = 900 if _is_70b else 150   # seconds
+        _eta_str   = "10–20 min" if _is_70b else "1–3 min"
+
         # Still running — show live progress and poll every 4 s
         st.info(
-            f"🤖 Pipeline running with **{st.session_state.get('_model', model_choice)}** "
+            f"🤖 Pipeline running with **{_running_model}** "
             f"— {mins}m {sec:02d}s elapsed…  \n"
-            "This typically takes **1–3 minutes** on the 8B model."
+            f"Estimated time: **{_eta_str}**."
         )
         progress_phases = [
-            (20,  "📄 Phase 1: Parsing documents…"),
-            (40,  "🔍 Phase 2: Analyzing skill gaps…"),
-            (70,  "✍️ Phase 3: Rewriting resume…"),
-            (90,  "📦 Phase 4: Assembling package…"),
+            (10,  "📄 Phase 1 / 4 — Parsing documents…"),
+            (35,  "🔍 Phase 2 / 4 — Analyzing skill gaps…"),
+            (75,  "✍️ Phase 3 / 4 — Rewriting & critiquing resume…"),
+            (92,  "📦 Phase 4 / 4 — Generating cover letter…"),
             (100, "✅ Finishing up…"),
         ]
-        # Approximate progress based on elapsed time (total ~120 s for 8B)
-        approx_pct = min(95, int(elapsed / 120 * 100))
+        approx_pct = min(95, int(elapsed / _total_est * 100))
         label = next((lbl for pct, lbl in progress_phases if approx_pct <= pct),
                      progress_phases[-1][1])
         st.progress(approx_pct / 100, text=label)
@@ -748,13 +753,24 @@ if st.session_state.pipeline_done and st.session_state.job_session:
         if session.analysis:
             st.subheader("ATS Score Breakdown")
             ats = session.analysis.ats_score
-            ats_df = pd.DataFrame({
-                "Dimension": ["Keyword Match", "Formatting", "Section Completeness",
-                               "Quantification", "Action Verbs"],
-                "Score": [ats.keyword_match, ats.formatting, ats.section_completeness,
-                          ats.quantification, ats.action_verb_usage],
-            })
-            st.bar_chart(ats_df.set_index("Dimension"), height=250)
+            dims = ["Keyword Match", "Formatting", "Section Complete", "Quantification", "Action Verbs"]
+            before_scores = [ats.keyword_match, ats.formatting, ats.section_completeness,
+                             ats.quantification, ats.action_verb_usage]
+            # Show before/after if rewrite data available
+            if session.rewritten_resume and session.rewritten_resume.new_ats_score:
+                new_ats = session.rewritten_resume.new_ats_score
+                after_scores = [new_ats.keyword_match, new_ats.formatting,
+                                new_ats.section_completeness, new_ats.quantification,
+                                new_ats.action_verb_usage]
+                ats_df = pd.DataFrame({
+                    "Dimension": dims,
+                    "Before": before_scores,
+                    "After":  after_scores,
+                })
+                st.bar_chart(ats_df.set_index("Dimension"), height=270)
+            else:
+                ats_df = pd.DataFrame({"Dimension": dims, "Score": before_scores})
+                st.bar_chart(ats_df.set_index("Dimension"), height=250)
 
             two_cols = st.columns(2)
             with two_cols[0]:
@@ -863,12 +879,22 @@ if st.session_state.pipeline_done and st.session_state.job_session:
     with tab_cover:
         if session.package and session.package.cover_letter:
             cl = session.package.cover_letter
-            st.subheader(cl.subject_line or "Cover Letter")
-            st.caption(f"Tone: {cl.tone}")
-            if "could not be generated" in cl.body or "failed" in cl.body.lower():
-                st.warning("Cover letter could not be generated automatically. Please write it manually.")
-            else:
-                st.text_area("Cover Letter Body", cl.body, height=450, key="cover_text_area")
+            cl_hdr, cl_btn = st.columns([3, 1])
+            with cl_hdr:
+                st.subheader(cl.subject_line or "Cover Letter")
+                st.caption(f"Tone: {cl.tone} · Word count: ~{len(cl.body.split())} words")
+            with cl_btn:
+                st.download_button(
+                    "📋 Copy as TXT",
+                    f"{cl.subject_line}\n\n{cl.body}",
+                    file_name="cover_letter.txt",
+                    mime="text/plain",
+                    use_container_width=True,
+                    key="cl_copy_btn",
+                )
+            if "personalise this cover letter" in cl.body:
+                st.warning("⚠️ This is a placeholder letter — the LLM timed out. Edit before sending.")
+            st.text_area("Cover Letter Body", cl.body, height=450, key="cover_text_area")
         else:
             st.info("Cover letter not yet generated.")
 
@@ -877,49 +903,100 @@ if st.session_state.pipeline_done and st.session_state.job_session:
         for line in session.agent_logs:
             st.text(line)
 
-    # ── Feedback loop ─────────────────────────────────────────────
+    # ── Application tracker ───────────────────────────────────────
     st.divider()
     st.subheader("📬 Track Your Application")
     st.caption(
-        "After you apply, come back and record the outcome. "
-        "The agent learns from your history to write better resumes over time."
+        "Record the outcome after you apply — the agent uses this history "
+        "to write better resumes over time."
     )
-    with st.expander("Record application outcome", expanded=False):
+
+    _OUTCOME_LABELS = {
+        "got_interview": "🎉 Interview",
+        "got_offer":     "🏆 Offer",
+        "rejected":      "❌ Rejected",
+        "no_response":   "📭 No response",
+    }
+
+    # ── Record new outcome ────────────────────────────────────────
+    with st.expander("➕ Record outcome for this application", expanded=False):
         fb_col1, fb_col2 = st.columns(2)
         with fb_col1:
             fb_outcome = st.selectbox(
                 "Outcome",
-                ["got_interview", "got_offer", "rejected", "no_response"],
-                format_func=lambda x: {
-                    "got_interview": "🎉 Got an interview",
-                    "got_offer":     "🏆 Got an offer",
-                    "rejected":      "❌ Rejected",
-                    "no_response":   "📭 No response",
-                }[x],
+                list(_OUTCOME_LABELS.keys()),
+                format_func=lambda x: _OUTCOME_LABELS[x],
                 key="fb_outcome",
             )
         with fb_col2:
             fb_notes = st.text_input(
                 "Notes (optional)",
-                placeholder="e.g. Recruiter called, liked Python background",
+                placeholder="e.g. Recruiter liked Python background",
                 key="fb_notes",
             )
-
-        if st.button("💾 Save Feedback", key="save_feedback_btn"):
+        if st.button("💾 Save Outcome", key="save_feedback_btn", type="primary"):
             try:
                 from core.config import get_settings
                 from core.memory import AgentMemory
                 cfg2 = get_settings()
-                mem = AgentMemory(persist_dir=cfg2.chroma_dir)
-                jt  = session.extracted_jd.job_title if session.extracted_jd else "Unknown"
-                co  = session.extracted_jd.company   if session.extracted_jd else "Unknown"
-                mem.store_feedback(
+                mem2 = AgentMemory(persist_dir=cfg2.chroma_dir)
+                jt   = session.extracted_jd.job_title if session.extracted_jd else "Unknown"
+                co   = session.extracted_jd.company   if session.extracted_jd else "Unknown"
+                mem2.store_feedback(
                     session_id=session.id,
                     job_title=jt,
                     company=co,
                     outcome=fb_outcome,
                     notes=fb_notes,
                 )
-                st.success(f"✅ Feedback saved! ({jt} at {co} → {fb_outcome})")
+                st.session_state["_feedback_saved"] = True
+                st.success(f"✅ Saved: **{jt}** at **{co}** → {_OUTCOME_LABELS[fb_outcome]}")
             except Exception as exc:
-                st.error(f"Could not save feedback: {exc}")
+                st.error(f"Could not save: {exc}")
+
+    # ── History table ─────────────────────────────────────────────
+    try:
+        from core.config import get_settings
+        from core.memory import AgentMemory
+        _cfg3 = get_settings()
+        _mem3 = AgentMemory(persist_dir=_cfg3.chroma_dir)
+        _history = _mem3.get_all_feedback()
+    except Exception:
+        _history = []
+
+    if _history:
+        st.markdown("**Application History**")
+        _hist_rows = []
+        for _e in reversed(_history):
+            _hist_rows.append({
+                "Role":     _e.get("job_title", "—"),
+                "Company":  _e.get("company",   "—"),
+                "Outcome":  _OUTCOME_LABELS.get(_e.get("outcome", ""), _e.get("outcome", "—")),
+                "Notes":    _e.get("notes", ""),
+            })
+        _hist_df = pd.DataFrame(_hist_rows)
+
+        # Colour-code outcomes
+        def _colour_outcome(val):
+            if "Interview" in val or "Offer" in val:
+                return "background-color: #14532d; color: #86efac"
+            if "Rejected" in val:
+                return "background-color: #450a0a; color: #fca5a5"
+            return ""
+
+        st.dataframe(
+            _hist_df.style.map(_colour_outcome, subset=["Outcome"]),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+        # Summary stats
+        _total  = len(_history)
+        _wins   = sum(1 for e in _history if e.get("outcome") in ("got_interview", "got_offer"))
+        _rate   = int(_wins / _total * 100) if _total else 0
+        _s1, _s2, _s3 = st.columns(3)
+        _s1.metric("Total applications", _total)
+        _s2.metric("Interviews / Offers", _wins)
+        _s3.metric("Success rate", f"{_rate}%")
+    else:
+        st.info("No applications tracked yet — save your first outcome above after applying.")

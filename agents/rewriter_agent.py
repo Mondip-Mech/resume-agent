@@ -145,7 +145,26 @@ IRONCLAD RULES:
                     changes_made=sec_data.get("changes_made", []),
                 ))
 
+        # ── Last-resort keyword injection ────────────────────────
+        # If critical JD keywords are still absent after all LLM passes,
+        # inject them directly into the Skills section so ATS always sees them.
         final_ats = score_resume(current_text, jd_keywords)
+        critical_gaps = [
+            kw for kw in final_ats.missing_keywords
+            if any(
+                kw.lower() == g.requirement.lower()
+                for g in analysis.skill_gaps
+                if g.importance == "required"
+            )
+        ]
+        if critical_gaps:
+            logger.info(
+                f"  Force-injecting {len(critical_gaps)} still-missing critical keywords: "
+                f"{critical_gaps}"
+            )
+            current_text = self._force_keywords_into_skills(current_text, critical_gaps)
+            final_ats = score_resume(current_text, jd_keywords)
+
         logger.info(f"RewriterAgent: Final ATS = {final_ats.overall}/100")
 
         return RewrittenResume(
@@ -266,8 +285,11 @@ IRONCLAD RULES:
         ]))
 
         iteration_note = (
-            f"\nThis is pass {iteration + 1}. "
-            f"Priority: add these missing keywords: {missing_keywords[:150]}"
+            f"\nThis is REFINEMENT PASS {iteration + 1}. The previous pass scored below target.\n"
+            f"MUST FIX:\n"
+            f"1. Add ALL of these keywords verbatim to the Skills section: {missing_keywords[:200]}\n"
+            f"2. Every bullet must end with a quantified result (%, $, x improvement).\n"
+            f"3. Summary first line must start with the exact job title: {jd.job_title}."
             if iteration > 0 else ""
         )
 
@@ -347,6 +369,39 @@ Keep everything else unchanged. Start with the candidate's name."""
 
         raw = self.llm.call(prompt, system=self.SYSTEM_PROMPT, max_tokens=2048)
         return raw if raw and len(raw) > 200 else rewritten_text
+
+    # ─── Force keyword injection ──────────────────────────────
+
+    def _force_keywords_into_skills(self, resume_text: str, keywords: list) -> str:
+        """
+        Append still-missing keywords to the Skills section.
+        Falls back to appending a new Skills block if no section is found.
+        This guarantees ATS keyword presence regardless of LLM behaviour.
+        """
+        addition = ", ".join(keywords)
+
+        # Try to find and extend an existing Skills section
+        skills_re = re.compile(
+            r"(SKILLS?[^\n]*\n)(.*?)(\n{2,}|\n(?=[A-Z][A-Z\s]{2,}:?\n))",
+            re.DOTALL | re.IGNORECASE,
+        )
+        m = skills_re.search(resume_text)
+        if m:
+            header, body, tail = m.group(1), m.group(2), m.group(3)
+            new_body = body.rstrip(", \n") + f", {addition}"
+            return (
+                resume_text[: m.start()]
+                + header + new_body + tail
+                + resume_text[m.end():]
+            )
+
+        # No Skills section — insert one before EXPERIENCE
+        exp_re = re.compile(r"\n(EXPERIENCE|WORK EXPERIENCE|PROFESSIONAL EXPERIENCE)", re.IGNORECASE)
+        exp_m = exp_re.search(resume_text)
+        block = f"\nSKILLS\n{addition}\n"
+        if exp_m:
+            return resume_text[: exp_m.start()] + block + resume_text[exp_m.start():]
+        return resume_text + block
 
     # ─── Metadata JSON ────────────────────────────────────────
 
