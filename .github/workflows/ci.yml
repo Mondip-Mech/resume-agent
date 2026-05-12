@@ -51,6 +51,12 @@ jobs:
         # All 133 tests run in-process with mocked LLM — no API key needed.
         # omit patterns live in pyproject.toml [tool.coverage.run] to avoid
         # shell glob-expansion of wildcard patterns on Linux runners.
+        # TRANSFORMERS_OFFLINE=1 prevents sentence-transformers from downloading
+        # the 80 MB all-MiniLM-L6-v2 model; AgentMemory falls back to TF-IDF.
+        env:
+          TRANSFORMERS_OFFLINE: "1"
+          HF_DATASETS_OFFLINE: "1"
+          NVIDIA_API_KEY: "test-key-ci"
         run: |
           pytest tests/ \
             --tb=short \

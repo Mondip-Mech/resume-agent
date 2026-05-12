@@ -62,9 +62,10 @@ def _get_embedding_function():
 
         logger.info("Neural embeddings: sentence-transformers (direct).")
         return _STEmbedFn()
-    except ImportError:
+    except Exception:  # catches ImportError + OSError/RuntimeError on model download failure
         logger.info(
-            "sentence-transformers not installed — using TF-IDF similarity. "
+            "sentence-transformers not available or model download failed — "
+            "using TF-IDF similarity. "
             "For better RAG quality: pip install sentence-transformers"
         )
         return None
