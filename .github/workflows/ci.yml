@@ -49,13 +49,14 @@ jobs:
 
       - name: Run test suite
         # All 133 tests run in-process with mocked LLM — no API key needed.
+        # omit patterns live in pyproject.toml [tool.coverage.run] to avoid
+        # shell glob-expansion of wildcard patterns on Linux runners.
         run: |
           pytest tests/ \
             --tb=short \
             --cov=. \
             --cov-report=term-missing \
             --cov-report=xml \
-            --cov-omit="tests/*,eval/*,*/site-packages/*" \
             -q
 
       - name: Upload coverage to Codecov

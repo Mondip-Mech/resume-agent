@@ -9,6 +9,21 @@ log_cli = true
 log_cli_level = "WARNING"
 addopts = "-v --tb=short"
 
+[tool.coverage.run]
+omit = [
+    "tests/*",
+    "eval/*",
+    "*/site-packages/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
+
 [project]
 name = "job-application-agent"
 version = "1.0.0"
