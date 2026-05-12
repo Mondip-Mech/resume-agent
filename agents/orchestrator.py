@@ -339,9 +339,12 @@ class Orchestrator:
             cover_letter=CoverLetter(
                 body=(
                     f"Dear Hiring Team at {jd.company},\n\n"
-                    "Cover letter could not be generated automatically. "
-                    "Please write your cover letter manually using the rewritten resume above.\n\n"
-                    "Sincerely,\n"
+                    f"Please find my tailored resume for the {jd.job_title} position. "
+                    "I am excited about this opportunity and believe my background "
+                    "aligns well with your requirements.\n\n"
+                    "[Please personalise this cover letter before submitting.]\n\n"
+                    "I would welcome a conversation to discuss how I can contribute.\n\n"
+                    "Best regards,\n"
                     f"{res.name}"
                 ),
                 subject_line=f"Re: {jd.job_title} — {res.name}",

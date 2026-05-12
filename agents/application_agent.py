@@ -61,8 +61,26 @@ COVER LETTER RULES:
         """Generate cover letter and assemble the full application package."""
         logger.info("ApplicationAgent: Assembling application package...")
 
-        # 1. Generate cover letter
-        cover_letter = self._write_cover_letter(jd, resume, rewritten, analysis)
+        # 1. Generate cover letter (isolated try/except — failure here must not
+        #    kill the resume DOCX which is already written at this point)
+        try:
+            cover_letter = self._write_cover_letter(jd, resume, rewritten, analysis)
+        except Exception as cl_err:
+            logger.warning(f"Cover letter generation failed: {cl_err}. Using placeholder.")
+            cover_letter = CoverLetter(
+                body=(
+                    f"Dear Hiring Team at {jd.company},\n\n"
+                    "Please find attached my tailored resume for the "
+                    f"{jd.job_title} role. I am very excited about this opportunity "
+                    f"and confident my background aligns well with your requirements.\n\n"
+                    "I would welcome a conversation to discuss how I can contribute "
+                    f"to {jd.company}'s mission.\n\n"
+                    "Best regards,\n"
+                    f"{resume.name}"
+                ),
+                subject_line=f"Re: {jd.job_title} — {resume.name}",
+                tone="professional",
+            )
 
         # 2. Format resume as DOCX
         resume_docx_path = self._save_resume_docx(rewritten, session_id)

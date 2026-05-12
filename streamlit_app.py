@@ -473,7 +473,7 @@ def _pipeline_worker(cfg_dict: dict):
         jd_path=cfg_dict["jd_path"],
     )
     orch = Orchestrator()
-    orch.app_agent.output_dir = cfg_dict["output_dir"]
+    orch.app_agent.output_dir = Path(cfg_dict["output_dir"])  # must be Path, not str
     return orch.run(session)
 
 
@@ -707,7 +707,8 @@ if st.session_state.pipeline_done and st.session_state.job_session:
             st.info("Resume file not ready.")
 
     with qd2:
-        _cl_ok = _cl_obj and _cl_obj.body and "could not be generated" not in _cl_obj.body
+        _cl_has_body = bool(_cl_obj and _cl_obj.body and _cl_obj.body.strip())
+        _cl_is_placeholder = _cl_has_body and "personalise this cover letter" in _cl_obj.body
         if _cl_docx and Path(_cl_docx).exists():
             with open(_cl_docx, "rb") as _fh:
                 st.download_button(
@@ -717,7 +718,9 @@ if st.session_state.pipeline_done and st.session_state.job_session:
                     use_container_width=True,
                     key="dl_cl_docx_top",
                 )
-        elif _cl_ok:
+            if _cl_is_placeholder:
+                st.caption("⚠️ Placeholder letter — edit before sending.")
+        elif _cl_has_body:
             _cl_txt = f"{_cl_obj.subject_line}\n\n{_cl_obj.body}"
             st.download_button(
                 "⬇️  Cover Letter (TXT)", _cl_txt,
@@ -725,6 +728,8 @@ if st.session_state.pipeline_done and st.session_state.job_session:
                 use_container_width=True,
                 key="dl_cl_txt_top",
             )
+            if _cl_is_placeholder:
+                st.caption("⚠️ Placeholder letter — edit before sending.")
         else:
             st.info("Cover letter not ready.")
 
