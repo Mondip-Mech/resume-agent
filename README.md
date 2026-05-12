@@ -6,6 +6,7 @@
 ![Tests](https://img.shields.io/badge/tests-133%20passed-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
+![Docker](https://img.shields.io/badge/docker-mondip007%2Fresume--agent-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 ---
