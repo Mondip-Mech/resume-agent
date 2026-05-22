@@ -190,14 +190,18 @@ jobs:
           # GitHub README stays clean while HF gets the metadata it needs.
           git checkout -b hf-deploy
 
-          printf '%s\n\n' '---
-title: Resume Agent
-emoji: 📄
-colorFrom: blue
-colorTo: purple
-sdk: docker
-pinned: false
----' | cat - README.md > /tmp/README_hf.md
+          {
+            echo '---'
+            echo 'title: Resume Agent'
+            echo 'emoji: 📄'
+            echo 'colorFrom: blue'
+            echo 'colorTo: purple'
+            echo 'sdk: docker'
+            echo 'pinned: false'
+            echo '---'
+            echo ''
+            cat README.md
+          } > /tmp/README_hf.md
           cp /tmp/README_hf.md README.md
 
           git add README.md
