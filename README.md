@@ -94,10 +94,7 @@ echo "NVIDIA_API_KEY=nvapi-..." > .env
 docker-compose up --build
 ```
 
-| Service | URL |
-|---|---|
-| Streamlit UI | http://localhost:8501 |
-| FastAPI docs | http://localhost:8000/docs |
+Once running, open the **Streamlit UI** at `http://localhost:8501` or the **FastAPI docs** at `http://localhost:8000/docs`.
 
 ### Local Python
 
