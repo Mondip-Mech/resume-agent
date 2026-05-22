@@ -36,16 +36,21 @@ COPY . .
 RUN mkdir -p uploads output chroma_db
 
 # ── Ports ─────────────────────────────────────────────────────────────────────
-# 8000 = FastAPI REST API (default CMD)
-# 8501 = Streamlit UI (override CMD in docker-compose)
-EXPOSE 8000
-EXPOSE 8501
+# 7860 = HuggingFace Spaces convention (default CMD runs Streamlit here)
+# 8000 = FastAPI REST API (override CMD in docker-compose)
+# 8501 = Streamlit on local port (override CMD in docker-compose)
+EXPOSE 7860
 
-# ── Health check (for the API service) ────────────────────────────────────────
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+# ── Health check ──────────────────────────────────────────────────────────────
+# Checks the Streamlit liveness endpoint — works for both HF Space and local.
+# docker-compose overrides CMD per service, so the API service has its own check.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:7860/_stcore/health || exit 1
 
-# ── Default: start FastAPI ─────────────────────────────────────────────────────
-# To run Streamlit instead, override CMD in docker-compose.yml:
-#   command: streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# ── Default: Streamlit on 7860 (HuggingFace Spaces convention) ────────────────
+# docker-compose.yml overrides this CMD for both the api and streamlit services.
+CMD ["streamlit", "run", "streamlit_app.py", \
+     "--server.address=0.0.0.0", \
+     "--server.port=7860", \
+     "--server.headless=true", \
+     "--browser.gatherUsageStats=false"]

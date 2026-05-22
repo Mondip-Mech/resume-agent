@@ -3,6 +3,8 @@
 > **Multi-agent pipeline that tailors your resume to a job description, scores it against ATS criteria, self-critiques the output, and generates a personalised cover letter — powered by NVIDIA NIM (free tier).**
 
 [![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://resume-agent-xqvdwdsnfnwfoq7wxhf8nt.streamlit.app/)
+[![Open in HuggingFace](https://img.shields.io/badge/🤗%20HuggingFace-Space-orange)](https://huggingface.co/spaces/Mechscientist26/resume-agent)
+![CI](https://github.com/Mondip-Mech/resume-agent/actions/workflows/ci.yml/badge.svg)
 ![Tests](https://img.shields.io/badge/tests-133%20passed-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)
@@ -90,8 +92,8 @@ Upload your resume and a job description. The pipeline extracts every requiremen
 
 ```bash
 # 1. Clone
-git clone https://github.com/your-username/job-agent.git
-cd job-agent
+git clone https://github.com/Mondip-Mech/resume-agent.git
+cd resume-agent
 
 # 2. Add your free NVIDIA NIM API key (https://build.nvidia.com)
 echo "NVIDIA_API_KEY=nvapi-..." > .env
@@ -113,8 +115,8 @@ The `all-MiniLM-L6-v2` model (~80 MB) downloads once at build time and is shared
 
 ```bash
 # Python 3.10+ required
-git clone https://github.com/your-username/job-agent.git
-cd job-agent
+git clone https://github.com/Mondip-Mech/resume-agent.git
+cd resume-agent
 
 pip install -r requirements.txt
 
@@ -335,6 +337,22 @@ Target score for pipeline to mark "ready to submit": **>= 75 / 100**
 | PDF parsing | PyMuPDF -> pdfplumber fallback |
 | Testing | pytest + pytest-asyncio + httpx ASGITransport |
 | Containers | Docker + docker-compose |
+
+---
+
+## CI/CD
+
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push to `main`:
+
+| Job | What it does |
+|---|---|
+| **Tests** | Full 133-test suite across Python 3.10 / 3.11 / 3.12 with mocked LLM calls |
+| **Benchmark** | ATS scorer validated against 15 hand-labelled resumes (band accuracy ≥ 80%, Spearman rho ≥ 0.80) |
+| **Lint** | `ruff check` (pycodestyle, pyflakes, isort) |
+| **Docker build** | Builds the image with BuildKit cache — no push, verifies it compiles |
+| **Deploy** | Pushes to [HuggingFace Space](https://huggingface.co/spaces/Mechscientist26/resume-agent) only after all above jobs pass |
+
+**Required GitHub secret:** add `HF_TOKEN` (a HuggingFace write token) in **Settings → Secrets and variables → Actions** in the GitHub repo.
 
 ---
 
